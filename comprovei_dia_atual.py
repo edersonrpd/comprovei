@@ -193,8 +193,9 @@ colunas = ['Pedido', 'CNPJ Embarcador', 'CNPJ Cliente', 'CNPJ Transp.']
 for coluna in colunas:
     df_concatenado[coluna] = df_concatenado[coluna].astype(pd.Int64Dtype())
 
+#Excluindo elementos duplicados e mantendo apenas ultimo registro
 df_concatenado = df_concatenado.sort_index()
-df_concatenado = df_concatenado.drop_duplicates(subset=['Documento'], keep='last')
+df_concatenado = df_concatenado.drop_duplicates(subset=['Documento','CNPJ Cliente'], keep='last')
 df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
 
 # Salvar o arquivo CSV concatenado
