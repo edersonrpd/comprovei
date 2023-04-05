@@ -28,7 +28,7 @@ auth = ("dislab", "qO5e6CYfma3SzW51AftBxPLYb59gurCn")
 login_payload = {
     "formato_exportacao": "csv",
     "filtros": {
-        "data_inicial": data_inicial,
+        "data_inicial": data_atual,
         "data_final": data_atual
 
     },
@@ -184,7 +184,7 @@ df_concatenado = pd.DataFrame(df_concatenado)
 
 # Excluindo linhas duplicadas
 df_concatenado = df_concatenado.drop_duplicates()
-df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
+#df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
 print("Arquivos CSV concatenados com sucesso!")
 
 #Alterando o type de algumas colunas
@@ -193,6 +193,9 @@ colunas = ['Pedido', 'CNPJ Embarcador', 'CNPJ Cliente', 'CNPJ Transp.']
 for coluna in colunas:
     df_concatenado[coluna] = df_concatenado[coluna].astype(pd.Int64Dtype())
 
+df_concatenado = df_concatenado.sort_index()
+df_concatenado = df_concatenado.drop_duplicates(subset=['Documento'], keep='last')
+df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
 
 # Salvar o arquivo CSV concatenado
 df_concatenado.to_csv(arquivo_saida, index=False, sep=';')

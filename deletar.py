@@ -12,6 +12,6 @@ for filename in os.listdir(pasta):
     file_path = os.path.join(pasta, filename)
 
     # Verifica se é um arquivo e se sua data de modificação é anterior ao limite
-    if os.path.isfile(file_path) and datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).date() < cutoff:
+    if os.path.isfile(file_path) and datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).date() == cutoff:
         os.remove(file_path)
         print(f"Arquivo '{filename}' removido.")

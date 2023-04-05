@@ -1,0 +1,6 @@
+*.csv
+*.bat
+*.xlsx
+*.teste.pbix
+bkp/
+extraidos/
