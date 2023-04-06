@@ -1,6 +1,8 @@
 *.csv
 *.bat
 *.xlsx
-*.teste.pbix
+*..pbix
+*.zip
+*.log
 bkp/
 extraidos/

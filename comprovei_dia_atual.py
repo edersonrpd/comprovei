@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 import logging
 import datetime
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # Configure o registro
 logging.basicConfig(filename='Log.log', level=logging.INFO,
@@ -173,17 +174,24 @@ arquivo_saida = 'C:\ComproveiSAC\dados.csv'
 # Substitua pelo nome do arquivo de saída
 arquivo_saida_excel = 'C:\ComproveiSAC\dados.xlsx'
 
-# Lista para armazenar os DataFrames
+# Array para armazenar o csv concatenado
 lista_dfs = []
 
-# Iterar pelos arquivos csv no diretório especificado
-for filename in os.listdir(dir_csv):
-    if filename.endswith('.csv') and filename != 'dados.csv':
+# Lista de arquivos no diretório ordenados por data de criação
+arquivos = sorted(Path(dir_csv).glob('*.csv'), key=os.path.getctime)
+
+for arquivo in arquivos:
+    filename = arquivo.name
+    if filename != 'dados.csv':
         # Ler o arquivo csv e armazenar em um DataFrame
-        df = pd.read_csv(os.path.join(dir_csv, filename))
+        df = pd.read_csv(os.path.join(dir_csv, filename), low_memory=False)
 
         # Adicionar o DataFrame à lista
         lista_dfs.append(df)
+        
+df_concatenado = pd.concat(lista_dfs, ignore_index=True)
+df_concatenado = pd.DataFrame(df_concatenado)
+df_concatenado = df_concatenado.drop_duplicates()
 
 # Concatenar todos os DataFrames na lista
 df_concatenado = pd.concat(lista_dfs, ignore_index=True)
