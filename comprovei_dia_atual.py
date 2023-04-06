@@ -1,4 +1,5 @@
 import requests
+from requests.exceptions import HTTPError
 import pandas as pd
 import json
 import zipfile
@@ -11,7 +12,8 @@ import datetime
 from datetime import datetime, timedelta
 
 # Configure o registro
-logging.basicConfig(filename='Log.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='Log.log', level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 # Obtendo a data atual como uma string no formato "YYYY-MM-DD"
@@ -114,8 +116,13 @@ login_payload = {
 
 
 }
+try:
+    response = requests.post(url_login, auth=auth, json=login_payload)
+    response.raise_for_status()
+except HTTPError as exc:
+    print(exc)
+    logging.error(f'URL {url_login} não encontrada.')
 
-response = requests.post(url_login, auth=auth, json=login_payload)
 
 zip_url = None
 
@@ -135,9 +142,8 @@ else:
     logging.error(f"Não encontrei dados de exportação do dia {data_atual}")
 
 
-
-if zip_url != None:    
-     url = zip_url  # Substitua pelo URL do arquivo zip que você deseja baixar
+if zip_url != None:
+    url = zip_url  # Substitua pelo URL do arquivo zip que você deseja baixar
 else:
     raise Exception('A URL do arquivo ZIP não foi encontrada.')
 
@@ -160,7 +166,8 @@ else:
     print(f"Erro ao baixar o arquivo: {response.status_code}")
 
 
-dir_csv = 'C:\ComproveiSAC\extraidos'  # Substitua pelo diretório onde estão os arquivos XML
+# Substitua pelo diretório onde estão os arquivos CSV
+dir_csv = 'C:\ComproveiSAC\extraidos'
 # Substitua pelo nome do arquivo de saída
 arquivo_saida = 'C:\ComproveiSAC\dados.csv'
 # Substitua pelo nome do arquivo de saída
@@ -187,15 +194,16 @@ df_concatenado = df_concatenado.drop_duplicates()
 #df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
 print("Arquivos CSV concatenados com sucesso!")
 
-#Alterando o type de algumas colunas
+# Alterando o type de algumas colunas
 colunas = ['Pedido', 'CNPJ Embarcador', 'CNPJ Cliente', 'CNPJ Transp.']
 
 for coluna in colunas:
     df_concatenado[coluna] = df_concatenado[coluna].astype(pd.Int64Dtype())
 
-#Excluindo elementos duplicados e mantendo apenas ultimo registro
+# Excluindo elementos duplicados e mantendo apenas ultimo registro
 df_concatenado = df_concatenado.sort_index()
-df_concatenado = df_concatenado.drop_duplicates(subset=['Documento','CNPJ Cliente'], keep='last')
+df_concatenado = df_concatenado.drop_duplicates(
+    subset=['Documento', 'CNPJ Cliente'], keep='last')
 df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
 
 # Salvar o arquivo CSV concatenado
