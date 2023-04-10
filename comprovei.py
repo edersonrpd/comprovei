@@ -16,11 +16,10 @@ from pathlib import Path
 logging.basicConfig(filename='Log.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Obtendo a data 10 dias atrás como uma string no formato "YYYY-MM-DD"
+data_inicial = (datetime.today() - timedelta(days=10)).strftime('%Y-%m-%d')
 
 # Obtendo a data atual como uma string no formato "YYYY-MM-DD"
-
-data_inicial = datetime.today() - timedelta(days=9)
-data_inicial = data_inicial.strftime('%Y-%m-%d')
 data_atual = datetime.today().strftime('%Y-%m-%d')
 
 
@@ -31,7 +30,7 @@ auth = ("dislab", "qO5e6CYfma3SzW51AftBxPLYb59gurCn")
 login_payload = {
     "formato_exportacao": "csv",
     "filtros": {
-        "data_inicial": data_inicial,
+        "data_inicial": data_atual,
         "data_final": data_atual
 
     },
@@ -117,13 +116,13 @@ login_payload = {
 
 
 }
-
 try:
     response = requests.post(url_login, auth=auth, json=login_payload)
     response.raise_for_status()
 except HTTPError as exc:
     print(exc)
     logging.error(f'URL {url_login} não encontrada.')
+
 
 zip_url = None
 
@@ -167,32 +166,44 @@ else:
     print(f"Erro ao baixar o arquivo: {response.status_code}")
 
 
-# Substitua pelo diretório onde estão os arquivos XML
+# Substitua pelo diretório onde estão os arquivos CSV
 dir_csv = 'C:\ComproveiSAC\extraidos'
 # Substitua pelo nome do arquivo de saída
 arquivo_saida = 'C:\ComproveiSAC\dados.csv'
 # Substitua pelo nome do arquivo de saída
 arquivo_saida_excel = 'C:\ComproveiSAC\dados.xlsx'
 
-# Lista para armazenar os DataFrames
+# Array para armazenar o csv concatenado
 lista_dfs = []
 
-# Iterar pelos arquivos csv no diretório especificado
-for filename in os.listdir(dir_csv):
-    if filename.endswith('.csv') and filename != 'dados.csv':
+# Lista de arquivos no diretório ordenados por data de criação
+arquivos = sorted(Path(dir_csv).glob('*.csv'))
+
+tipos_colunas = {
+    'Documento' : str,
+    'CNPJ Embarcador' : str,
+    'CNPJ Cliente' :str,
+    'Emissão' : datetime,
+
+}
+
+for arquivo in arquivos:
+    filename = arquivo.name
+    if filename != 'dados.csv':
         # Ler o arquivo csv e armazenar em um DataFrame
-        df = pd.read_csv(os.path.join(dir_csv, filename))
+        df = pd.read_csv(os.path.join(dir_csv, filename), dtype=tipos_colunas)
 
         # Adicionar o DataFrame à lista
         lista_dfs.append(df)
 
+
 # Concatenar todos os DataFrames na lista
 df_concatenado = pd.concat(lista_dfs, ignore_index=True)
-df_concatenado = pd.DataFrame(df_concatenado)
+
 
 # Excluindo linhas duplicadas
 df_concatenado = df_concatenado.drop_duplicates()
-df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
+#df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
 print("Arquivos CSV concatenados com sucesso!")
 
 # Alterando o type de algumas colunas
@@ -200,6 +211,12 @@ colunas = ['Pedido', 'CNPJ Embarcador', 'CNPJ Cliente', 'CNPJ Transp.']
 
 for coluna in colunas:
     df_concatenado[coluna] = df_concatenado[coluna].astype(pd.Int64Dtype())
+
+# Excluindo elementos duplicados e mantendo apenas ultimo registro
+df_concatenado = (df_concatenado.sort_index()
+                  .drop_duplicates(
+                      subset=['Documento', 'CNPJ Cliente'], keep='last')
+                  .sort_values(by=['Emissão'], ascending=False))
 
 
 # Salvar o arquivo CSV concatenado
