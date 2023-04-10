@@ -1,4 +1,5 @@
 import requests
+from requests.exceptions import HTTPError
 import pandas as pd
 import json
 import zipfile
@@ -9,9 +10,11 @@ import xml.etree.ElementTree as ET
 import logging
 import datetime
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # Configure o registro
-logging.basicConfig(filename='Log.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='Log.log', level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 # Obtendo a data atual como uma string no formato "YYYY-MM-DD"
@@ -115,7 +118,12 @@ login_payload = {
 
 }
 
-response = requests.post(url_login, auth=auth, json=login_payload)
+try:
+    response = requests.post(url_login, auth=auth, json=login_payload)
+    response.raise_for_status()
+except HTTPError as exc:
+    print(exc)
+    logging.error(f'URL {url_login} não encontrada.')
 
 zip_url = None
 
@@ -135,9 +143,8 @@ else:
     logging.error(f"Não encontrei dados de exportação do dia {data_atual}")
 
 
-
-if zip_url != None:    
-     url = zip_url  # Substitua pelo URL do arquivo zip que você deseja baixar
+if zip_url != None:
+    url = zip_url  # Substitua pelo URL do arquivo zip que você deseja baixar
 else:
     raise Exception('A URL do arquivo ZIP não foi encontrada.')
 
@@ -160,7 +167,8 @@ else:
     print(f"Erro ao baixar o arquivo: {response.status_code}")
 
 
-dir_csv = 'C:\ComproveiSAC\extraidos'  # Substitua pelo diretório onde estão os arquivos XML
+# Substitua pelo diretório onde estão os arquivos XML
+dir_csv = 'C:\ComproveiSAC\extraidos'
 # Substitua pelo nome do arquivo de saída
 arquivo_saida = 'C:\ComproveiSAC\dados.csv'
 # Substitua pelo nome do arquivo de saída
@@ -187,7 +195,7 @@ df_concatenado = df_concatenado.drop_duplicates()
 df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
 print("Arquivos CSV concatenados com sucesso!")
 
-#Alterando o type de algumas colunas
+# Alterando o type de algumas colunas
 colunas = ['Pedido', 'CNPJ Embarcador', 'CNPJ Cliente', 'CNPJ Transp.']
 
 for coluna in colunas:
