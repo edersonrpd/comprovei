@@ -11,6 +11,12 @@ import logging
 import datetime
 from datetime import datetime, timedelta
 from pathlib import Path
+from dotenv import dotenv_values , load_dotenv
+
+load_dotenv()
+config = dotenv_values("config.env")
+username = config['USERNAME']
+password = config["PASSWORD"]
 
 # Configure o registro
 logging.basicConfig(filename='Log.log', level=logging.INFO,
@@ -26,11 +32,11 @@ data_atual = datetime.today().strftime('%Y-%m-%d')
 url_login = 'https://console-api.comprovei.com/exports/documentSAC'
 
 # Adicione as credenciais de autenticação como uma tupla
-auth = ("dislab", "qO5e6CYfma3SzW51AftBxPLYb59gurCn")
+auth = (username, password)
 login_payload = {
     "formato_exportacao": "csv",
     "filtros": {
-        "data_inicial": data_atual,
+        "data_inicial": data_inicial,
         "data_final": data_atual
 
     },
@@ -180,18 +186,39 @@ lista_dfs = []
 arquivos = sorted(Path(dir_csv).glob('*.csv'))
 
 tipos_colunas = {
-    'Documento' : str,
-    'CNPJ Embarcador' : str,
-    'CNPJ Cliente' :str,
-    'Emissão' : datetime,
-
+'Documento': str,
+'CNPJ Embarcador': str,
+'CNPJ Cliente': str,
+'CNPJ Transp.': str,
+'Status': str,
+'Modelo': str,
+'Gerente Cód.' : str,
+'Gerente Nome': str,
+'Gerente Emai': str,
+'Gerente Tel.' : str,
+'Supervisor Cód.' : str,
+'Supervisor Nome' : str,
+'Supervisor Email' : str,
+'Supervisor Tel.' : str,
+'Gerente Sênior Cód.' : str,
+'Gerente Sênior Nome' : str,
+'Gerente Sênior Email' : str,
+'Gerente Sênior Tel.' : str,
+'Vendedor Cód.' : str,
+'Vendedor Nome' : str,
+'Vendedor Email' : str,
+'Vendedor Tel.' : str,
+'Pedido' : str,
+'AWB': str,
+'Remessa': str
 }
 
 for arquivo in arquivos:
     filename = arquivo.name
     if filename != 'dados.csv':
         # Ler o arquivo csv e armazenar em um DataFrame
-        df = pd.read_csv(os.path.join(dir_csv, filename), dtype=tipos_colunas)
+        df = pd.read_csv(os.path.join(dir_csv, filename), dtype=tipos_colunas, parse_dates=[
+                         'Emissão', 'Data Finalização', 'Data Pagamento'])
 
         # Adicionar o DataFrame à lista
         lista_dfs.append(df)

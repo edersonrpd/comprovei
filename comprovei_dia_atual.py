@@ -11,11 +11,12 @@ import logging
 import datetime
 from datetime import datetime, timedelta
 from pathlib import Path
-from dotenv import load_dotenv
+from dotenv import dotenv_values , load_dotenv
 
 load_dotenv()
-username = os.getenv("USERNAME")
-password = os.getenv("PASSWORD")
+config = dotenv_values("config.env")
+username = config['USERNAME']
+password = config["PASSWORD"]
 
 # Configure o registro
 logging.basicConfig(filename='Log.log', level=logging.INFO,
