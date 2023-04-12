@@ -11,6 +11,11 @@ import logging
 import datetime
 from datetime import datetime, timedelta
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+username = os.getenv("USERNAME")
+password = os.getenv("PASSWORD")
 
 # Configure o registro
 logging.basicConfig(filename='Log.log', level=logging.INFO,
@@ -26,7 +31,7 @@ data_atual = datetime.today().strftime('%Y-%m-%d')
 url_login = 'https://console-api.comprovei.com/exports/documentSAC'
 
 # Adicione as credenciais de autenticação como uma tupla
-auth = ("dislab", "qO5e6CYfma3SzW51AftBxPLYb59gurCn")
+auth = (username, password)
 login_payload = {
     "formato_exportacao": "csv",
     "filtros": {
