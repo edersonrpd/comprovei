@@ -1,9 +1,11 @@
 *.csv
 *.bat
 *.xlsx
-*..pbix
+*.pbix
 *.zip
 *.log
+*.env
 bkp/
 extraidos/
 ComproveiSac/
+.gitignore
