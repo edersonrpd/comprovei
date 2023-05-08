@@ -13,15 +13,20 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 
-# Carregando informações de username e password de um arquivo externo.
+
+
+# Carregando informações um arquivo externo.
 load_dotenv()
 config = dotenv_values("config.env")
 username = config['USERNAME']
 password = config["PASSWORD"]
 
-DATA_DIR = 'C:\ComproveiSAC'
+#DATA_DIR = 'C:\DISLAB-TI\ComproveiSAC'
+DATA_DIR = config['DATADIR']
+#CSV_DATA_DIR = 'C:\DISLAB-TI\ComproveiSAC\Comprovei_dados'
+CSV_DATA_DIR = config['CSV_DATA_DIR']
 DATA_EXTRACTION_DIR = os.path.join(DATA_DIR, 'extraidos')
-CSV_OUTPUT_FILE = os.path.join(DATA_DIR, 'dados.csv')
+CSV_OUTPUT_FILE = os.path.join(CSV_DATA_DIR, 'dados.csv')
 EXCEL_OUTPUT_FILE = os.path.join(DATA_DIR, 'dados.xlsx')
 
 # Configure o registro
@@ -29,7 +34,7 @@ logging.basicConfig(filename='Log.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Obtendo a data 10 dias atrás como uma string no formato "YYYY-MM-DD"
-data_inicial = (datetime.today() - timedelta(days=10)).strftime('%Y-%m-%d')
+data_inicial = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
 
 # Obtendo a data atual como uma string no formato "YYYY-MM-DD"
 data_atual = datetime.today().strftime('%Y-%m-%d')
@@ -171,7 +176,7 @@ if response.status_code == 200:
     # Abrir e extrair o arquivo zip
     with zipfile.ZipFile(arquivo_zip, 'r') as zip_ref:
         # Substitua pelo diretório em que deseja extrair os arquivos
-        zip_ref.extractall("C:\ComproveiSAC\extraidos")
+        zip_ref.extractall(DATA_EXTRACTION_DIR)
 
     print("Arquivo baixado e extraído com sucesso!")
 else:
@@ -179,17 +184,17 @@ else:
 
 
 # Substitua pelo diretório onde estão os arquivos CSV
-dir_csv = 'C:\ComproveiSAC\extraidos'
+dir_csv = 'E:\ComproveiSAC\extraidos'
 # Substitua pelo nome do arquivo de saída
-arquivo_saida = 'C:\ComproveiSAC\dados.csv'
+arquivo_saida = 'E:\ComproveiSAC\dados.csv'
 # Substitua pelo nome do arquivo de saída
-arquivo_saida_excel = 'C:\ComproveiSAC\dados.xlsx'
+arquivo_saida_excel = 'E:\ComproveiSAC\dados.xlsx'
 
 
 # Array para armazenar o csv concatenado
 lista_dfs = []
 # Lista de arquivos no diretório ordenados por data de criação
-arquivos = sorted(Path(dir_csv).glob('*.csv'))
+arquivos = sorted(Path(DATA_EXTRACTION_DIR).glob('*.csv'))
 tipos_colunas = {
     'Documento': str,
     'CNPJ Embarcador': str,
@@ -222,7 +227,7 @@ for arquivo in arquivos:
         filename = arquivo.name
         if filename != 'dados.csv':
             # Ler o arquivo csv e armazenar em um DataFrame
-            df = pd.read_csv(os.path.join(dir_csv, filename),
+            df = pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, filename),
                              dtype=tipos_colunas, low_memory=False)
 
             # Adicionar o DataFrame à lista
@@ -246,7 +251,7 @@ for coluna in colunas:
 
 df_concatenado = (df_concatenado.sort_index()
                       .drop_duplicates(
-                          subset=['Documento', 'CNPJ Cliente'], keep='last')
+                          subset=['Documento', 'Chave'], keep='last')
                       .sort_values(by=['Emissão'], ascending=False))
 
 # Salvar o arquivo CSV concatenado

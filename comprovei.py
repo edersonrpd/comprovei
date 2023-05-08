@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import dotenv_values , load_dotenv
 
+#Carregando informações de username e password de um arquivo externo.
 load_dotenv()
 config = dotenv_values("config.env")
 username = config['USERNAME']
@@ -242,7 +243,7 @@ for coluna in colunas:
 # Excluindo elementos duplicados e mantendo apenas ultimo registro
 df_concatenado = (df_concatenado.sort_index()
                   .drop_duplicates(
-                      subset=['Documento', 'CNPJ Cliente'], keep='last')
+                      subset=['Documento', 'Chave'], keep='last')
                   .sort_values(by=['Emissão'], ascending=False))
 
 
