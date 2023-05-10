@@ -36,7 +36,7 @@ logging.basicConfig(filename='Log.log', level=logging.INFO,
 
 # Obtendo a data 10 dias atrás como uma string no formato "YYYY-MM-DD"
 default_data_inicial = (
-    datetime.today() - timedelta(days=3)).strftime('%Y-%m-%d')
+    datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
 
 # Obtendo a data atual como uma string no formato "YYYY-MM-DD"
 default_data_atual = datetime.today().strftime('%Y-%m-%d')
@@ -133,21 +133,21 @@ def create_login_payload(data_inicial, data_atual):
     }
 
 
-parser = argparse.ArgumentParser(
-    description="Seu script para baixar e processar dados do Comprovei SAC")
-parser.add_argument('data_inicial', type=str,
-                    help="Data inicial no formato 'YYYY-MM-DD'")
-parser.add_argument('data_atual', type=str,
-                    help="Data atual (final) no formato 'YYYY-MM-DD'")
+
+parser = argparse.ArgumentParser(description="Seu script para baixar e processar dados do Comprovei SAC")
+parser.add_argument('data_inicial', type=str, help="Data inicial no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
+parser.add_argument('data_atual', type=str, help="Data atual (final) no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
 
 args = parser.parse_args()
 
-if args.data_inicial == 'default_data_inicial':
+if args.data_inicial.lower() == 'hoje':
+    data_inicial = datetime.today().strftime('%Y-%m-%d')
+elif args.data_inicial.lower() == 'ontem':
     data_inicial = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
 else:
     data_inicial = args.data_inicial
 
-if args.data_atual == 'default_data_atual':
+if args.data_atual.lower() == 'hoje':
     data_atual = datetime.today().strftime('%Y-%m-%d')
 else:
     data_atual = args.data_atual
