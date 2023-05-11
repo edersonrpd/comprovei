@@ -14,6 +14,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 
+default_data_atual = datetime.today().strftime('%Y-%m-%d')
+dia_atual = datetime.today().strftime('%Y%m%d')
 
 # Carregando informações um arquivo externo.
 load_dotenv()
@@ -26,7 +28,10 @@ auth = (username, password)
 DATA_DIR = config['DATADIR']
 CSV_DATA_DIR = config['CSV_DATA_DIR']
 DATA_EXTRACTION_DIR = os.path.join(DATA_DIR, 'extraidos')
-CSV_OUTPUT_FILE = os.path.join(CSV_DATA_DIR, 'dados.csv')
+CSV_OUTPUT_TMP_DIR = os.path.join(DATA_DIR, 'temp')
+CSV_OUTPUT_TMP_FILE = os.path.join(
+    CSV_OUTPUT_TMP_DIR, 'dados_'+dia_atual+'.csv')
+CSV_OUTPUT_FILE = os.path.join(CSV_DATA_DIR, 'dados_csv')
 EXCEL_OUTPUT_FILE = os.path.join(DATA_DIR, 'dados.xlsx')
 
 
@@ -133,10 +138,12 @@ def create_login_payload(data_inicial, data_atual):
     }
 
 
-
-parser = argparse.ArgumentParser(description="Seu script para baixar e processar dados do Comprovei SAC")
-parser.add_argument('data_inicial', type=str, help="Data inicial no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
-parser.add_argument('data_atual', type=str, help="Data atual (final) no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
+parser = argparse.ArgumentParser(
+    description="Seu script para baixar e processar dados do Comprovei SAC")
+parser.add_argument('data_inicial', type=str,
+                    help="Data inicial no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
+parser.add_argument('data_atual', type=str,
+                    help="Data atual (final) no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
 
 args = parser.parse_args()
 
@@ -236,17 +243,20 @@ tipos_colunas = {
     'Remessa': str
 }
 
-for arquivo in arquivos:
-    filename = arquivo.name
-    if filename != 'dados.csv':
-        # Ler o arquivo csv e armazenar em um DataFrame
-        df = pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, filename),
-                         dtype=tipos_colunas, low_memory=False)
+# for arquivo in arquivos:
+#     filename = arquivo.name
+#     if filename != 'dados.csv':
+#         # Ler o arquivo csv e armazenar em um DataFrame
+#         df = pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, filename),
+#                          dtype=tipos_colunas, low_memory=False)
 
-        # Adicionar o DataFrame à lista
-        lista_dfs.append(df)
+#         # Adicionar o DataFrame à lista
+#         lista_dfs.append(df)
 
-    # Concatenar todos os DataFrames na lista
+lista_dfs = [pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, arquivo.name), dtype=tipos_colunas, low_memory=False)
+             for arquivo in arquivos if arquivo.name != 'dados.csv']
+
+# Concatenar todos os DataFrames na lista
 df_concatenado = pd.concat(lista_dfs, ignore_index=True)
 
 # Excluindo linhas duplicadas
