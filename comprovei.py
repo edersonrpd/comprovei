@@ -1,12 +1,10 @@
 import requests
 from requests.exceptions import HTTPError
 import pandas as pd
-import json
 import zipfile
 import io
 import re
 import os
-import xml.etree.ElementTree as ET
 import logging
 import datetime
 import argparse
@@ -15,7 +13,7 @@ from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 
 default_data_atual = datetime.today().strftime('%Y-%m-%d')
-dia_atual = datetime.today().strftime('%Y%m%d')
+dia_atual = datetime.today().strftime('%Y%m%d%H%M')
 
 # Carregando informações um arquivo externo.
 load_dotenv()
@@ -30,7 +28,7 @@ CSV_DATA_DIR = config['CSV_DATA_DIR']
 DATA_EXTRACTION_DIR = os.path.join(DATA_DIR, 'extraidos')
 CSV_OUTPUT_TMP_DIR = os.path.join(DATA_DIR, 'temp')
 CSV_OUTPUT_TMP_FILE = os.path.join(
-    CSV_OUTPUT_TMP_DIR, 'dados_'+dia_atual+'.csv')
+    CSV_OUTPUT_TMP_DIR, f'dados_{dia_atual}.csv')
 CSV_OUTPUT_FILE = os.path.join(CSV_DATA_DIR, 'dados_csv')
 EXCEL_OUTPUT_FILE = os.path.join(DATA_DIR, 'dados.xlsx')
 
@@ -145,7 +143,7 @@ parser.add_argument('data_inicial', type=str,
 parser.add_argument('data_atual', type=str,
                     help="Data atual (final) no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
 
-args = parser.parse_args()
+args = parser.parse_args(['hoje', 'hoje'])
 
 if args.data_inicial.lower() == 'hoje':
     data_inicial = datetime.today().strftime('%Y-%m-%d')
@@ -159,16 +157,30 @@ if args.data_atual.lower() == 'hoje':
 else:
     data_atual = args.data_atual
 
+def processar_dados_comprovei_sac(data_inicial, data_atual):
+    if data_inicial.lower() == 'hoje':
+        data_inicial = datetime.today().strftime('%Y-%m-%d')
+    elif data_inicial.lower() == 'ontem':
+        data_inicial = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+
+    if data_atual.lower() == 'hoje':
+        data_atual = datetime.today().strftime('%Y-%m-%d')
+
 login_payload = create_login_payload(data_inicial, data_atual)
 
-try:
-    response = requests.post(url_login, auth=auth, json=login_payload)
-    response.raise_for_status()
-except HTTPError as exc:
-    print(exc)
-    logging.error(f'URL {url_login} não encontrada.')
+def login(url_login, auth, login_payload):
+    try:
+        response = requests.post(url_login, auth=auth, json=login_payload)
+        response.raise_for_status()
+    except (HTTPError, ConnectionError) as exc:
+        print(exc)
+        logging.error(
+            f'Erro ao tentar logar na URL {url_login}. Detalhes do erro: {exc}')
+        raise
+    return response
 
 
+response = login(url_login, auth, login_payload)
 zip_url = None
 
 if response.status_code == 200:
@@ -193,22 +205,20 @@ else:
     raise Exception('A URL do arquivo ZIP não foi encontrada.')
 
 
-# Baixar o arquivo zip
-response = requests.get(url)
 
-# Verificar se a resposta é bem-sucedida
-if response.status_code == 200:
-    # Ler o conteúdo do arquivo zip
+def download_arquivo(url):
+    response = requests.get(url)
+    if response.status_code != 200:
+        print(f"Erro ao baixar o arquivo: {response.status_code}")
+        return None
     arquivo_zip = io.BytesIO(response.content)
+    return arquivo_zip
 
-    # Abrir e extrair o arquivo zip
+
+def extrair_arquivo(arquivo_zip, diretório):
     with zipfile.ZipFile(arquivo_zip, 'r') as zip_ref:
-        # Substitua pelo diretório em que deseja extrair os arquivos
-        zip_ref.extractall(DATA_EXTRACTION_DIR)
-
+        zip_ref.extractall(diretório)
     print("Arquivo baixado e extraído com sucesso!")
-else:
-    print(f"Erro ao baixar o arquivo: {response.status_code}")
 
 
 # Array para armazenar o csv concatenado
@@ -243,21 +253,13 @@ tipos_colunas = {
     'Remessa': str
 }
 
-# for arquivo in arquivos:
-#     filename = arquivo.name
-#     if filename != 'dados.csv':
-#         # Ler o arquivo csv e armazenar em um DataFrame
-#         df = pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, filename),
-#                          dtype=tipos_colunas, low_memory=False)
-
-#         # Adicionar o DataFrame à lista
-#         lista_dfs.append(df)
 
 lista_dfs = [pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, arquivo.name), dtype=tipos_colunas, low_memory=False)
              for arquivo in arquivos if arquivo.name != 'dados.csv']
 
 # Concatenar todos os DataFrames na lista
 df_concatenado = pd.concat(lista_dfs, ignore_index=True)
+
 
 # Excluindo linhas duplicadas
 df_concatenado = df_concatenado.drop_duplicates()
@@ -269,6 +271,7 @@ colunas = ['Pedido', 'CNPJ Embarcador', 'CNPJ Cliente', 'CNPJ Transp.']
 
 for coluna in colunas:
     df_concatenado[coluna] = df_concatenado[coluna].astype(pd.Int64Dtype())
+
 
 # Excluindo elementos duplicados e mantendo apenas ultimo registro
 
@@ -282,8 +285,8 @@ df_concatenado = (df_concatenado.sort_index()
 
 def save_output(df_concatenado):
     df_concatenado.to_csv(CSV_OUTPUT_FILE, index=False, sep=';')
+    df_concatenado.to_csv(CSV_OUTPUT_TMP_FILE, index=False, sep=';')
     logging.info(f'Arquivo {CSV_OUTPUT_FILE} salvo com sucesso')
-    # df_concatenado.to_excel(EXCEL_OUTPUT_FILE, index=False)
 
 
 if __name__ == '__main__':
