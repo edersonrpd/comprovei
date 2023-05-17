@@ -137,12 +137,14 @@ def create_login_payload(data_inicial, data_atual):
     }
 
 
+parser = argparse.ArgumentParser(
+    description="Seu script para baixar e processar dados do Comprovei SAC")
+parser.add_argument('data_inicial', type=str,
+                    help="Data inicial no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
+parser.add_argument('data_atual', type=str,
+                    help="Data atual (final) no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
 
-parser = argparse.ArgumentParser(description="Seu script para baixar e processar dados do Comprovei SAC")
-parser.add_argument('data_inicial', type=str, help="Data inicial no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
-parser.add_argument('data_atual', type=str, help="Data atual (final) no formato 'YYYY-MM-DD' ou 'hoje' para a data atual")
-
-args = parser.parse_args(['ontem', 'hoje'])
+args = parser.parse_args()
 
 if args.data_inicial.lower() == 'hoje':
     data_inicial = datetime.today().strftime('%Y-%m-%d')
@@ -158,31 +160,25 @@ else:
 
 login_payload = create_login_payload(data_inicial, data_atual)
 
+
 def autenticar_e_solicitar_dados(data_inicial, data_atual):
     login_payload = create_login_payload(data_inicial, data_atual)
     try:
         response = requests.post(url_login, auth=auth, json=login_payload)
         response.raise_for_status()
-        
+
         if 'erro' in response.json():
-            print("Erro na resposta da API: ",response.json()['erro'])
+            print("Erro na resposta da API: ", response.json()['erro'])
             return None
     except HTTPError as exc:
         print(exc)
         logging.error(f'URL {url_login} não encontrada.')
     return response
 
-# try:
-#     response = requests.post(url_login, auth=auth, json=login_payload)
-#     response.raise_for_status()
-# except HTTPError as exc:
-#     print(exc)
-#     logging.error(f'URL {url_login} não encontrada.')
 
 retorno = autenticar_e_solicitar_dados(data_inicial, data_atual)
 
 zip_url = None
-
 
 
 if retorno.status_code == 200:
@@ -197,15 +193,6 @@ if retorno.status_code == 200:
         zip_url = match.group()
         print(f"A URL do arquivo ZIP é: {zip_url}")
     text = retorno.text
-
-    # Use uma expressão regular para encontrar uma URL no texto
-    url_pattern = re.compile(
-        r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
-    match = url_pattern.search(text)
-
-    if match:
-        zip_url = match.group()
-        print(f"A URL do arquivo ZIP é: {zip_url}")
 else:
     print(f"Não encontrei dados de exportação do dia {data_atual}")
     logging.error(f"Não encontrei dados de exportação do dia {data_atual}")
@@ -233,10 +220,6 @@ if response.status_code == 200:
     print("Arquivo baixado e extraído com sucesso!")
 else:
     print(f"Erro ao baixar o arquivo: {response.status_code}")
-
-
-# Array para armazenar o csv concatenado
-
 
 
 # Lista de arquivos no diretório ordenados por data de criação
@@ -268,14 +251,17 @@ tipos_colunas = {
     'AWB': str,
     'Remessa': str,
     'Data Pagamento': str,
-    'Data Agendamento' : str
+    'Data Agendamento': str
 }
 
+# Se existir arquivo temporário, ler o arquivo temporário e  concatenar com os arquivos novos
+# Senão existir, criar um dataframe vazio
 if os.path.isfile(CSV_TEMP_OUTPUT_FILE):
-    lista_dfs = [pd.read_csv(CSV_TEMP_OUTPUT_FILE, dtype=tipos_colunas, low_memory=False, sep=';')]
+    lista_dfs = [pd.read_csv(CSV_TEMP_OUTPUT_FILE,
+                             dtype=tipos_colunas, sep=';', engine='pyarrow')]
+    # dtype=tipos_colunas, low_memory=False, sep=';']
 else:
     lista_dfs = []
-
 
 
 def processar_csv():
@@ -286,7 +272,7 @@ def processar_csv():
             if filename != 'dados.csv':
                 # Ler o arquivo csv e armazenar em um DataFrame
                 df = pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, filename),
-                                dtype=tipos_colunas, low_memory=False)
+                                 dtype=tipos_colunas, low_memory=False)
                 lista_dfs.append(df)
         except Exception as e:
             print(f"Erro ao ler o arquivo {filename}: {e}")
@@ -298,19 +284,22 @@ def processar_csv():
 
 df_concatenado = processar_csv()
 
-
 colunas = ['Pedido', 'CNPJ Embarcador', 'CNPJ Cliente', 'CNPJ Transp.']
 
 for coluna in colunas:
     df_concatenado[coluna] = df_concatenado[coluna].astype(pd.Int64Dtype())
 
+
 # Excluindo elementos duplicados e mantendo apenas ultimo registro
+def drop_duplicates(df_concatenado):
+    df_concatenado = (df_concatenado.sort_index()
+                      .drop_duplicates(
+        subset=['Documento', 'Chave'], keep='last')
+        .sort_values(by=['Emissão'], ascending=False))
+    return df_concatenado
 
-df_concatenado = (df_concatenado.sort_index()
-                  .drop_duplicates(
-    subset=['Documento', 'Chave'], keep='last')
-    .sort_values(by=['Emissão'], ascending=False))
 
+df_concatenado = drop_duplicates(df_concatenado)
 # Salvar o arquivo CSV concatenado
 
 
@@ -321,7 +310,7 @@ def save_output(df_concatenado):
     logging.info(f'Arquivo {CSV_OUTPUT_FILE} salvo com sucesso')
     # df_concatenado.to_excel(EXCEL_OUTPUT_FILE, index=False)
 
-# Função para limpar o diretório
+
 def clean_directory(directory, keep_file):
     for file in os.listdir(directory):
         file_path = os.path.join(directory, file)
@@ -330,7 +319,8 @@ def clean_directory(directory, keep_file):
             print(f"Arquivo {file_path} excluído com sucesso!")
             logging.info(f'Arquivo {file_path} excluído com sucesso!')
 
+
 if __name__ == '__main__':
     create_login_payload(data_inicial, data_atual)
     save_output(df_concatenado)
-    clean_directory(DATA_EXTRACTION_DIR, CSV_OUTPUT_FILE)
+    # clean_directory(DATA_EXTRACTION_DIR, CSV_OUTPUT_FILE)
