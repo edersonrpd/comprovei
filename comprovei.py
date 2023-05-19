@@ -14,7 +14,6 @@ from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from requests.auth import HTTPBasicAuth
 
-
 # Carregando informações um arquivo externo.
 load_dotenv()
 config = dotenv_values("config.env")
@@ -33,14 +32,13 @@ CSV_OUTPUT_FILE = os.path.join(CSV_DATA_DIR, 'dados.csv')
 CSV_OUTPUT_FILE_BI = os.path.join(CSV_DATA_DIR_BI, 'dados.csv')
 EXCEL_OUTPUT_FILE = os.path.join(DATA_DIR, 'dados.xlsx')
 
-
 # Configure o registro
 logging.basicConfig(filename='Log.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Obtendo a data 10 dias atrás como uma string no formato "YYYY-MM-DD"
 default_data_inicial = (
-    datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+    datetime.today() - timedelta(days=10)).strftime('%Y-%m-%d')
 
 # Obtendo a data atual como uma string no formato "YYYY-MM-DD"
 default_data_atual = datetime.today().strftime('%Y-%m-%d')
@@ -150,6 +148,11 @@ if args.data_inicial.lower() == 'hoje':
     data_inicial = datetime.today().strftime('%Y-%m-%d')
 elif args.data_inicial.lower() == 'ontem':
     data_inicial = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+elif args.data_inicial.lower() == 'tres':
+    data_inicial = (datetime.today() - timedelta(days=3)).strftime('%Y-%m-%d')
+elif args.data_inicial.lower() == 'cinco':
+    data_inicial = (datetime.today() - timedelta(days=5)).strftime('%Y-%m-%d')
+
 else:
     data_inicial = args.data_inicial
 
@@ -221,7 +224,6 @@ if response.status_code == 200:
 else:
     print(f"Erro ao baixar o arquivo: {response.status_code}")
 
-
 # Lista de arquivos no diretório ordenados por data de criação
 arquivos = sorted(Path(DATA_EXTRACTION_DIR).glob('*.csv'))
 tipos_colunas = {
@@ -258,7 +260,7 @@ tipos_colunas = {
 # Senão existir, criar um dataframe vazio
 if os.path.isfile(CSV_TEMP_OUTPUT_FILE):
     lista_dfs = [pd.read_csv(CSV_TEMP_OUTPUT_FILE,
-                             dtype=tipos_colunas, sep=';', engine='pyarrow')]
+                             dtype=tipos_colunas, sep=';', low_memory=False)]
     # dtype=tipos_colunas, low_memory=False, sep=';']
 else:
     lista_dfs = []
@@ -277,7 +279,7 @@ def processar_csv():
         except Exception as e:
             print(f"Erro ao ler o arquivo {filename}: {e}")
     df_concatenado = pd.concat(lista_dfs, ignore_index=True)
-    df_concatenado = df_concatenado.drop_duplicates()
+    # df_concatenado = df_concatenado.drop_duplicates()
     print("Arquivos CSV concatenados com sucesso!")
     return df_concatenado
 
@@ -290,21 +292,17 @@ for coluna in colunas:
     df_concatenado[coluna] = df_concatenado[coluna].astype(pd.Int64Dtype())
 
 
-# Excluindo elementos duplicados e mantendo apenas ultimo registro
 def drop_duplicates(df_concatenado):
-    df_concatenado = (df_concatenado.sort_index()
-                      .drop_duplicates(
+    df_concatenado = df_concatenado.drop_duplicates(
         subset=['Documento', 'Chave'], keep='last')
-        .sort_values(by=['Emissão'], ascending=False))
     return df_concatenado
 
 
 df_concatenado = drop_duplicates(df_concatenado)
-# Salvar o arquivo CSV concatenado
 
 
 def save_output(df_concatenado):
-    df_concatenado.to_csv(CSV_OUTPUT_FILE, index=False, sep=';')
+    # df_concatenado.to_csv(CSV_OUTPUT_FILE, index=False, sep=';')
     df_concatenado.to_csv(CSV_TEMP_OUTPUT_FILE, index=False, sep=';')
     df_concatenado.to_csv(CSV_OUTPUT_FILE_BI, index=False, sep=';')
     logging.info(f'Arquivo {CSV_OUTPUT_FILE} salvo com sucesso')
@@ -323,4 +321,4 @@ def clean_directory(directory, keep_file):
 if __name__ == '__main__':
     create_login_payload(data_inicial, data_atual)
     save_output(df_concatenado)
-    # clean_directory(DATA_EXTRACTION_DIR, CSV_OUTPUT_FILE)
+    clean_directory(DATA_EXTRACTION_DIR, CSV_OUTPUT_FILE)
