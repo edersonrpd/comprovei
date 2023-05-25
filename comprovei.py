@@ -1,5 +1,5 @@
+import numpy as np
 import requests
-from requests.exceptions import HTTPError
 import pandas as pd
 import zipfile
 import io
@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from requests.auth import HTTPBasicAuth
-
+from requests.exceptions import HTTPError
 # Carregando informações um arquivo externo.
 load_dotenv()
 config = dotenv_values("config.env")
@@ -272,8 +272,7 @@ else:
 
 def processar_csv():
     arquivos = sorted(Path(DATA_EXTRACTION_DIR).glob('*.csv'))
-    colunas_excluir = ['CNPJ Embarcador', 'Data Pagamento', 'Modelo', 'CNPJ Cliente', 'Código Cliente', 'Tipo', 'Data Agendamento', 'Rota/Roteiro', 'Motorista', 'Cód. Motorista', 'Placa', 'CNPJ Transp.', 'Gerente Nome', 'Gerente Cód.', 'Gerente Email', 'Gerente Tel.',
-                       'Supervisor Cód.', 'Supervisor Nome', 'Supervisor Email', 'Supervisor Tel.', 'Gerente Sênior Cód.', 'Gerente Sênior Nome', 'Gerente Sênior Email', 'Gerente Sênior Tel.', 'Vendedor Cód.', 'Vendedor Nome', 'Vendedor Email', 'Vendedor Tel.', 'AWB', 'Remessa']
+
     for arquivo in arquivos:
         try:
             filename = arquivo.name
@@ -281,8 +280,7 @@ def processar_csv():
                 # Ler o arquivo csv e armazenar em um DataFrame
                 df = pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, filename),
                                  dtype=tipos_colunas, low_memory=False)
-                df = df.drop(colunas_excluir, axis=1)
-                # Excluindo colunas não usadas
+
                 lista_dfs.append(df)
         except Exception as e:
             print(f"Erro ao ler o arquivo {filename}: {e}")
@@ -299,6 +297,16 @@ for coluna in colunas:
     df_concatenado[coluna] = df_concatenado[coluna].astype(pd.Int64Dtype())
 
 
+def preenche_colunas_vazio(dataframe):
+    dataframe[['Tipo', 'Modelo', 'CNPJ Embarcador',
+               'CNPJ Cliente', 'Código Cliente']] = np.nan
+    return dataframe
+
+
+# Preenche colunas não utilizadas no BI por vazio
+df_concatenado = preenche_colunas_vazio(df_concatenado)
+
+
 def drop_duplicates(df_concatenado):
     df_concatenado = df_concatenado.drop_duplicates(
         subset=['Documento', 'Chave'], keep='last')
@@ -308,7 +316,7 @@ def drop_duplicates(df_concatenado):
 # Elimina duplicados
 df_concatenado = drop_duplicates(df_concatenado)
 
-# Filtra apenas dados superiores a variavel mes 
+# Filtra apenas dados superiores a variavel mes
 df_concatenado = df_concatenado[df_concatenado['Emissão'] >= periodo]
 
 
