@@ -1,0 +1,10 @@
+*.csv
+*.bat
+*.xlsx
+*.pbix
+*.zip
+*.log
+*.env
+bkp/
+extraidos/
+ComproveiSac/
