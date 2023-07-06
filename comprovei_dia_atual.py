@@ -9,19 +9,26 @@ import os
 import xml.etree.ElementTree as ET
 import logging
 import datetime
+import argparse
+import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 
-# Carregando informações de username e password de um arquivo externo.
+
+# Carregando informações um arquivo externo.
 load_dotenv()
 config = dotenv_values("config.env")
 username = config['USERNAME']
 password = config["PASSWORD"]
+auth = (username, password)
 
-DATA_DIR = 'C:\ComproveiSAC'
+# DATA_DIR = 'C:\DISLAB-TI\ComproveiSAC'
+DATA_DIR = config['DATADIR']
+# CSV_DATA_DIR = 'C:\DISLAB-TI\ComproveiSAC\Comprovei_dados'
+CSV_DATA_DIR = config['CSV_DATA_DIR']
 DATA_EXTRACTION_DIR = os.path.join(DATA_DIR, 'extraidos')
-CSV_OUTPUT_FILE = os.path.join(DATA_DIR, 'dados.csv')
+CSV_OUTPUT_FILE = os.path.join(CSV_DATA_DIR, 'dados.csv')
 EXCEL_OUTPUT_FILE = os.path.join(DATA_DIR, 'dados.xlsx')
 
 # Configure o registro
@@ -29,105 +36,122 @@ logging.basicConfig(filename='Log.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Obtendo a data 10 dias atrás como uma string no formato "YYYY-MM-DD"
-data_inicial = (datetime.today() - timedelta(days=10)).strftime('%Y-%m-%d')
+default_data_inicial = (datetime.today() - timedelta(days=3)).strftime('%Y-%m-%d')
 
 # Obtendo a data atual como uma string no formato "YYYY-MM-DD"
-data_atual = datetime.today().strftime('%Y-%m-%d')
-
+default_data_atual = datetime.today().strftime('%Y-%m-%d')
 
 url_login = 'https://console-api.comprovei.com/exports/documentSAC'
 
 # Adicione as credenciais de autenticação como uma tupla
-auth = (username, password)
-login_payload = {
-    "formato_exportacao": "csv",
-    "filtros": {
-        "data_inicial": data_atual,
-        "data_final": data_atual
-
-    },
-    "campos": [
-        "Documento",
-        "Emissão",
-        "CNPJ Embarcador",
-        "Embarcador",
-        "Região",
-        "Modelo",
-        "CNPJ Cliente",
-        "Código Cliente",
-        "Código Int Cliente",
-        "Tipo",
-        "Cliente",
-        "Cidade Destino",
-        "UF Destino",
-        "Data Finalização",
-        "Ultima Ocorrência",
-        "Status",
-        "Data Pagamento",
-        "Data Agendamento",
-        "Qtd Reentregas",
-        "Qtd Paradas",
-        "Chave",
-        "Valor",
-        "Volume",
-        "Qtd volumes",
-        "Conferidos",
-        "Rota/Roteiro",
-        "Motorista",
-        "Cód. Motorista",
-        "Placa",
-        "Data da rota",
-        "Transportadora",
-        "CNPJ Transp.",
-        "Data Últ. Ocorr.",
-        "Gerente Cód.",
-        "Gerente Nome",
-        "Gerente Email",
-        "Gerente Tel.",
-        "Supervisor Cód.",
-        "Supervisor Nome",
-        "Supervisor Email",
-        "Supervisor Tel.",
-        "Gerente Sênior Cód.",
-        "Gerente Sênior Nome",
-        "Gerente Sênior Email",
-        "Gerente Sênior Tel.",
-        "Vendedor Cód.",
-        "Vendedor Nome",
-        "Vendedor Email",
-        "Vendedor Tel.",
-        "Pedido",
-        "Base Origem",
-        "Base Destino",
-        "Prazo SLA",
-        "Status SLA",
-        "Tipo de Frete",
-        "Modal",
-        "Data Atualização",
-        "AWB",
-        "Remessa",
-        "Possui Foto",
-        "Performance SLA",
-        "Justificativa",
-        "Acatado",
-        "Comentário da Justificativa",
-        "Chegada Cliente",
-        "Ajuste Manual",
-        "Horario Ajuste Manual",
-        "Usuário Ajuste Manual",
-        "Código IBGE Cidade",
-        "BU",
-        "CFOP",
-        "Campo Livre 1",
-        "Campo Livre 2",
-        "Campo Livre 3",
-        "Campo Livre 4",
-        "Campo Livre 5",
-        "Email SLA Atrasado"
-    ]
 
 
-}
+def create_login_payload(data_inicial, data_atual):
+    return {
+        "formato_exportacao": "csv",
+        "filtros": {
+            "data_inicial": data_inicial,
+            "data_final": data_atual
+        },
+        "campos": [
+            "Documento",
+            "Emissão",
+            "CNPJ Embarcador",
+            "Embarcador",
+            "Região",
+            "Modelo",
+            "CNPJ Cliente",
+            "Código Cliente",
+            "Código Int Cliente",
+            "Tipo",
+            "Cliente",
+            "Cidade Destino",
+            "UF Destino",
+            "Data Finalização",
+            "Ultima Ocorrência",
+            "Status",
+            "Data Pagamento",
+            "Data Agendamento",
+            "Qtd Reentregas",
+            "Qtd Paradas",
+            "Chave",
+            "Valor",
+            "Volume",
+            "Qtd volumes",
+            "Conferidos",
+            "Rota/Roteiro",
+            "Motorista",
+            "Cód. Motorista",
+            "Placa",
+            "Data da rota",
+            "Transportadora",
+            "CNPJ Transp.",
+            "Data Últ. Ocorr.",
+            "Gerente Cód.",
+            "Gerente Nome",
+            "Gerente Email",
+            "Gerente Tel.",
+            "Supervisor Cód.",
+            "Supervisor Nome",
+            "Supervisor Email",
+            "Supervisor Tel.",
+            "Gerente Sênior Cód.",
+            "Gerente Sênior Nome",
+            "Gerente Sênior Email",
+            "Gerente Sênior Tel.",
+            "Vendedor Cód.",
+            "Vendedor Nome",
+            "Vendedor Email",
+            "Vendedor Tel.",
+            "Pedido",
+            "Base Origem",
+            "Base Destino",
+            "Prazo SLA",
+            "Status SLA",
+            "Tipo de Frete",
+            "Modal",
+            "Data Atualização",
+            "AWB",
+            "Remessa",
+            "Possui Foto",
+            "Performance SLA",
+            "Justificativa",
+            "Acatado",
+            "Comentário da Justificativa",
+            "Chegada Cliente",
+            "Ajuste Manual",
+            "Horario Ajuste Manual",
+            "Usuário Ajuste Manual",
+            "Código IBGE Cidade",
+            "BU",
+            "CFOP",
+            "Campo Livre 1",
+            "Campo Livre 2",
+            "Campo Livre 3",
+            "Campo Livre 4",
+            "Campo Livre 5",
+            "Email SLA Atrasado"
+        ]
+    }
+
+parser = argparse.ArgumentParser(description="Seu script para baixar e processar dados do Comprovei SAC")
+parser.add_argument('data_inicial', type=str, help="Data inicial no formato 'YYYY-MM-DD'")
+parser.add_argument('data_atual', type=str, help="Data atual (final) no formato 'YYYY-MM-DD'")
+
+args = parser.parse_args()
+
+if args.data_inicial == 'default_data_inicial':
+    data_inicial = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+else:
+    data_inicial = args.data_inicial
+
+if args.data_atual == 'default_data_atual':
+    data_atual = datetime.today().strftime('%Y-%m-%d')
+else:
+    data_atual = args.data_atual
+
+login_payload = create_login_payload(data_inicial, data_atual)
+
 try:
     response = requests.post(url_login, auth=auth, json=login_payload)
     response.raise_for_status()
@@ -171,25 +195,17 @@ if response.status_code == 200:
     # Abrir e extrair o arquivo zip
     with zipfile.ZipFile(arquivo_zip, 'r') as zip_ref:
         # Substitua pelo diretório em que deseja extrair os arquivos
-        zip_ref.extractall("C:\ComproveiSAC\extraidos")
+        zip_ref.extractall(DATA_EXTRACTION_DIR)
 
     print("Arquivo baixado e extraído com sucesso!")
 else:
     print(f"Erro ao baixar o arquivo: {response.status_code}")
 
 
-# Substitua pelo diretório onde estão os arquivos CSV
-dir_csv = 'C:\ComproveiSAC\extraidos'
-# Substitua pelo nome do arquivo de saída
-arquivo_saida = 'C:\ComproveiSAC\dados.csv'
-# Substitua pelo nome do arquivo de saída
-arquivo_saida_excel = 'C:\ComproveiSAC\dados.xlsx'
-
-
 # Array para armazenar o csv concatenado
 lista_dfs = []
 # Lista de arquivos no diretório ordenados por data de criação
-arquivos = sorted(Path(dir_csv).glob('*.csv'))
+arquivos = sorted(Path(DATA_EXTRACTION_DIR).glob('*.csv'))
 tipos_colunas = {
     'Documento': str,
     'CNPJ Embarcador': str,
@@ -219,24 +235,24 @@ tipos_colunas = {
 }
 
 for arquivo in arquivos:
-        filename = arquivo.name
-        if filename != 'dados.csv':
-            # Ler o arquivo csv e armazenar em um DataFrame
-            df = pd.read_csv(os.path.join(dir_csv, filename),
-                             dtype=tipos_colunas, low_memory=False)
+    filename = arquivo.name
+    if filename != 'dados.csv':
+        # Ler o arquivo csv e armazenar em um DataFrame
+        df = pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, filename),
+                         dtype=tipos_colunas, low_memory=False)
 
-            # Adicionar o DataFrame à lista
-            lista_dfs.append(df)
+        # Adicionar o DataFrame à lista
+        lista_dfs.append(df)
 
     # Concatenar todos os DataFrames na lista
 df_concatenado = pd.concat(lista_dfs, ignore_index=True)
 
 # Excluindo linhas duplicadas
 df_concatenado = df_concatenado.drop_duplicates()
-    # df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
+# df_concatenado = df_concatenado.sort_values(by=['Emissão'], ascending=False)
 print("Arquivos CSV concatenados com sucesso!")
 
-    # Alterando o type de algumas colunas
+# Alterando o type de algumas colunas
 colunas = ['Pedido', 'CNPJ Embarcador', 'CNPJ Cliente', 'CNPJ Transp.']
 
 for coluna in colunas:
@@ -245,9 +261,9 @@ for coluna in colunas:
 # Excluindo elementos duplicados e mantendo apenas ultimo registro
 
 df_concatenado = (df_concatenado.sort_index()
-                      .drop_duplicates(
-                          subset=['Documento', 'CNPJ Cliente'], keep='last')
-                      .sort_values(by=['Emissão'], ascending=False))
+                  .drop_duplicates(
+    subset=['Documento', 'Chave'], keep='last')
+    .sort_values(by=['Emissão'], ascending=False))
 
 # Salvar o arquivo CSV concatenado
 
@@ -259,4 +275,6 @@ def save_output(df_concatenado):
 
 
 if __name__ == '__main__':
+    create_login_payload(data_inicial, data_atual)
     save_output(df_concatenado)
+    
