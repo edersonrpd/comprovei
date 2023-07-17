@@ -14,6 +14,7 @@ from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError
+
 # Carregando informações um arquivo externo.
 load_dotenv()
 config = dotenv_values("config.env")
@@ -162,6 +163,8 @@ else:
 
 if args.data_atual.lower() == 'hoje':
     data_atual = datetime.today().strftime('%Y-%m-%d')
+elif args.data_atual.lower() == 'ontem':
+    data_atual = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
 else:
     data_atual = args.data_atual
 
