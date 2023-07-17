@@ -1,5 +1,5 @@
-import numpy as np
 import requests
+from requests.exceptions import HTTPError
 import pandas as pd
 import zipfile
 import io
@@ -13,7 +13,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from requests.auth import HTTPBasicAuth
-from requests.exceptions import HTTPError
 
 # Carregando informações um arquivo externo.
 load_dotenv()
@@ -41,8 +40,6 @@ logging.basicConfig(filename='Log.log', level=logging.INFO,
 default_data_inicial = (
     datetime.today() - timedelta(days=10)).strftime('%Y-%m-%d')
 
-periodo = (datetime.today() - timedelta(days=41)).strftime('%Y-%m-%d')
-
 # Obtendo a data atual como uma string no formato "YYYY-MM-DD"
 default_data_atual = datetime.today().strftime('%Y-%m-%d')
 
@@ -50,7 +47,6 @@ url_login = 'https://console-api.comprovei.com/exports/documentSAC'
 
 
 def create_login_payload(data_inicial, data_atual):
-    # Não alterar os campos
     return {
         "formato_exportacao": "csv",
         "filtros": {
@@ -150,21 +146,18 @@ args = parser.parse_args()
 
 if args.data_inicial.lower() == 'hoje':
     data_inicial = datetime.today().strftime('%Y-%m-%d')
+elif args.data_inicial.lower() == 'ontem':
+    data_inicial = (datetime.today() - timedelta(days=10)).strftime('%Y-%m-%d')
 elif args.data_inicial.lower() == 'tres':
     data_inicial = (datetime.today() - timedelta(days=3)).strftime('%Y-%m-%d')
 elif args.data_inicial.lower() == 'cinco':
     data_inicial = (datetime.today() - timedelta(days=5)).strftime('%Y-%m-%d')
-elif args.data_inicial.lower() == 'dez':
-    data_inicial = (datetime.today() - timedelta(days=10)).strftime('%Y-%m-%d')
-elif args.data_inicial.lower() == 'ontem':
-    data_inicial = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+
 else:
     data_inicial = args.data_inicial
 
 if args.data_atual.lower() == 'hoje':
     data_atual = datetime.today().strftime('%Y-%m-%d')
-elif args.data_atual.lower() == 'ontem':
-    data_atual = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
 else:
     data_atual = args.data_atual
 
@@ -275,7 +268,6 @@ else:
 
 def processar_csv():
     arquivos = sorted(Path(DATA_EXTRACTION_DIR).glob('*.csv'))
-
     for arquivo in arquivos:
         try:
             filename = arquivo.name
@@ -283,31 +275,21 @@ def processar_csv():
                 # Ler o arquivo csv e armazenar em um DataFrame
                 df = pd.read_csv(os.path.join(DATA_EXTRACTION_DIR, filename),
                                  dtype=tipos_colunas, low_memory=False)
-
                 lista_dfs.append(df)
         except Exception as e:
             print(f"Erro ao ler o arquivo {filename}: {e}")
     df_concatenado = pd.concat(lista_dfs, ignore_index=True)
+    # df_concatenado = df_concatenado.drop_duplicates()
     print("Arquivos CSV concatenados com sucesso!")
     return df_concatenado
 
 
 df_concatenado = processar_csv()
 
-colunas = ['Pedido']
+colunas = ['Pedido', 'CNPJ Embarcador', 'CNPJ Cliente', 'CNPJ Transp.']
 
 for coluna in colunas:
     df_concatenado[coluna] = df_concatenado[coluna].astype(pd.Int64Dtype())
-
-
-def preenche_colunas_vazio(dataframe):
-    dataframe[['Tipo', 'Modelo', 'CNPJ Embarcador',
-               'CNPJ Cliente', 'Código Cliente']] = np.nan
-    return dataframe
-
-
-# Preenche colunas não utilizadas no BI por vazio
-df_concatenado = preenche_colunas_vazio(df_concatenado)
 
 
 def drop_duplicates(df_concatenado):
@@ -316,11 +298,7 @@ def drop_duplicates(df_concatenado):
     return df_concatenado
 
 
-# Elimina duplicados
 df_concatenado = drop_duplicates(df_concatenado)
-
-# Filtra apenas dados superiores a variavel mes
-df_concatenado = df_concatenado[df_concatenado['Emissão'] >= periodo]
 
 
 def save_output(df_concatenado):
@@ -328,7 +306,7 @@ def save_output(df_concatenado):
     df_concatenado.to_csv(CSV_TEMP_OUTPUT_FILE, index=False, sep=';')
     df_concatenado.to_csv(CSV_OUTPUT_FILE_BI, index=False, sep=';')
     logging.info(f'Arquivo {CSV_OUTPUT_FILE} salvo com sucesso')
-    df_concatenado.to_excel(EXCEL_OUTPUT_FILE, index=False)
+    # df_concatenado.to_excel(EXCEL_OUTPUT_FILE, index=False)
 
 
 def clean_directory(directory, keep_file):
